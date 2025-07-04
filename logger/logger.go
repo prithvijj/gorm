@@ -62,6 +62,7 @@ type Config struct {
 // Interface logger interface
 type Interface interface {
 	LogMode(LogLevel) Interface
+	ColorfulMode(bool) Interface
 	Info(context.Context, string, ...interface{})
 	Warn(context.Context, string, ...interface{})
 	Error(context.Context, string, ...interface{})
@@ -87,8 +88,7 @@ var (
 	}
 )
 
-// New initialize logger
-func New(writer Writer, config Config) Interface {
+func getLoggerStrs(colorful bool) (string, string, string, string, string, string) {
 	var (
 		infoStr      = "%s\n[info] "
 		warnStr      = "%s\n[warn] "
@@ -98,7 +98,7 @@ func New(writer Writer, config Config) Interface {
 		traceErrStr  = "%s %s\n[%.3fms] [rows:%v] %s"
 	)
 
-	if config.Colorful {
+	if colorful {
 		infoStr = Green + "%s\n" + Reset + Green + "[info] " + Reset
 		warnStr = BlueBold + "%s\n" + Reset + Magenta + "[warn] " + Reset
 		errStr = Magenta + "%s\n" + Reset + Red + "[error] " + Reset
@@ -106,6 +106,13 @@ func New(writer Writer, config Config) Interface {
 		traceWarnStr = Green + "%s " + Yellow + "%s\n" + Reset + RedBold + "[%.3fms] " + Yellow + "[rows:%v]" + Magenta + " %s" + Reset
 		traceErrStr = RedBold + "%s " + MagentaBold + "%s\n" + Reset + Yellow + "[%.3fms] " + BlueBold + "[rows:%v]" + Reset + " %s"
 	}
+
+	return infoStr, warnStr, errStr, traceStr, traceWarnStr, traceErrStr
+}
+
+// New initialize logger
+func New(writer Writer, config Config) Interface {
+	infoStr, warnStr, errStr, traceStr, traceWarnStr, traceErrStr := getLoggerStrs(config.Colorful)
 
 	return &logger{
 		Writer:       writer,
@@ -130,6 +137,21 @@ type logger struct {
 func (l *logger) LogMode(level LogLevel) Interface {
 	newlogger := *l
 	newlogger.LogLevel = level
+	return &newlogger
+}
+
+// ColorfulMode configure logger colors
+func (l *logger) ColorfulMode(enabled bool) Interface {
+	newlogger := *l
+
+	infoStr, warnStr, errStr, traceStr, traceWarnStr, traceErrStr := getLoggerStrs(enabled)
+	newlogger.infoStr = infoStr
+	newlogger.warnStr = warnStr
+	newlogger.errStr = errStr
+	newlogger.traceStr = traceStr
+	newlogger.traceWarnStr = traceWarnStr
+	newlogger.traceErrStr = traceErrStr
+
 	return &newlogger
 }
 
